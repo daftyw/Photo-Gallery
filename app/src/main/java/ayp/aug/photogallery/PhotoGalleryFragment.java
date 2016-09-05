@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
@@ -37,6 +38,7 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -413,6 +415,8 @@ public class PhotoGalleryFragment extends VisibleFragment {
             menuItem.setOnMenuItemClickListener(this);
             MenuItem menuItem2 = menu.add(0, 2, 0, R.string.open_in_app_browser);
             menuItem2.setOnMenuItemClickListener(this);
+            MenuItem menuItem3 = menu.add(0, 3, 0, R.string.open_in_map);
+            menuItem3.setOnMenuItemClickListener(this);
         }
 
         @Override
@@ -426,6 +430,15 @@ public class PhotoGalleryFragment extends VisibleFragment {
                 case 2:
                     Intent i2 = PhotoPageActivity.newIntent(getActivity(), mGalleryItem.getPhotoUri());
                     startActivity(i2); // call internal activity by explicit intent
+                    return true;
+
+                case 3:
+                    Location itemLoc = new Location("");
+                    itemLoc.setLatitude(Double.valueOf(mGalleryItem.getLat()));
+                    itemLoc.setLongitude(Double.valueOf(mGalleryItem.getLon()));
+
+                    Intent i3 = PhotoMapActivity.newIntent(getActivity(), mLocation, itemLoc, null);
+                    startActivity(i3);
                     return true;
 
                 default:
