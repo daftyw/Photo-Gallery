@@ -1,21 +1,23 @@
 package ayp.aug.photogallery;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v4.util.LruCache;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
@@ -28,6 +30,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +62,9 @@ public class PhotoGalleryFragment extends VisibleFragment {
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloaderThread;
     private FetcherTask mFetcherTask;
     private String mSearchKey;
+    private Boolean mUseGPS;
+    private GoogleApiClient mGoogleApiClient;
+    private Location mLocation;
 
     // Cache
     private LruCache<String, Bitmap> mMemoryCache;
@@ -61,12 +73,48 @@ public class PhotoGalleryFragment extends VisibleFragment {
     // Use 1/8th of the available memory for this memory cache.
     final int cacheSize = maxMemory / 8;
 
+    private static final int REQUEST_PERMISSION_LOCATION = 2928;
+
+    private GoogleApiClient.ConnectionCallbacks mConnectionCallbacks =
+            new GoogleApiClient.ConnectionCallbacks() {
+
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+            Log.i(TAG, "Google API connected");
+
+            if(mUseGPS) {
+                findLocation();
+            }
+
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+            Log.i(TAG, "Google API suspended");
+        }
+    };
+
+    private LocationListener mLocationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            Log.d(TAG, "Got location + " + location.getLatitude() + "," + location.getLongitude());
+
+            mLocation = location;
+
+            Toast.makeText(getActivity(), location.getLatitude() + "," + location.getLongitude(),
+                    Toast.LENGTH_LONG).show();
+        }
+    };
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setHasOptionsMenu(true);
         setRetainInstance(true);
+
+        mUseGPS = PhotoGalleryPreference.getUseGPS(getActivity());
+        mSearchKey = PhotoGalleryPreference.getStoredSearchKey(getActivity());
 
         Log.d(TAG, "Memory size = " + maxMemory + " K ");
 
@@ -98,7 +146,84 @@ public class PhotoGalleryFragment extends VisibleFragment {
         mThumbnailDownloaderThread.start();
         mThumbnailDownloaderThread.getLooper();
 
+        mGoogleApiClient = new GoogleApiClient.Builder(getActivity())
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(mConnectionCallbacks)
+                .build();
+
         Log.i(TAG, "Start background thread");
+    }
+
+    private void findLocation() {
+        if(hasPermission()) {
+            requestLocation();
+        }
+    }
+
+    private boolean hasPermission() {
+        int permissionStatus =
+                ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if(permissionStatus == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+
+        requestPermissions(
+                new String[] {
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                },
+                REQUEST_PERMISSION_LOCATION);
+
+        return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+
+        if(requestCode == REQUEST_PERMISSION_LOCATION) {
+            if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                requestLocation();
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    private void requestLocation() {
+        if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(getActivity())
+                        == ConnectionResult.SUCCESS) {
+
+            LocationRequest request = LocationRequest.create();
+
+            request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            request.setNumUpdates(50);
+            request.setInterval(1000);
+
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
+                request, mLocationListener);
+        }
+    }
+
+    private void unFindLocation() {
+        if (mGoogleApiClient.isConnected()) {
+
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient,
+                    mLocationListener);
+        }
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mGoogleApiClient.disconnect();
     }
 
     @Override
@@ -119,8 +244,8 @@ public class PhotoGalleryFragment extends VisibleFragment {
     @Override
     public void onPause() {
         super.onPause();
-
         PhotoGalleryPreference.setStoredSearchKey(getActivity(), mSearchKey);
+        unFindLocation();
     }
 
     @Override
@@ -132,7 +257,10 @@ public class PhotoGalleryFragment extends VisibleFragment {
             mSearchKey = searchKey;
         }
 
-        Log.d(TAG, "On resume completed");
+        mUseGPS = PhotoGalleryPreference.getUseGPS(getActivity());
+
+        Log.d(TAG, "On resume completed, mSearchKey = " + mSearchKey
+                + ", mUseGPS = " + mUseGPS);
     }
 
     @Override
@@ -200,6 +328,10 @@ public class PhotoGalleryFragment extends VisibleFragment {
                 getActivity().startService(pollIntent);
                 return true;
 
+            case R.id.mnu_setting:
+                Intent i = SettingActivity.newIntent(getActivity());
+                startActivity(i);
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -361,7 +493,16 @@ public class PhotoGalleryFragment extends VisibleFragment {
                 List<GalleryItem> itemList = new ArrayList<>();
                 FlickrFetcher flickrFetcher = new FlickrFetcher();
                 if(params.length > 0) {
-                    flickrFetcher.searchPhotos(itemList, params[0]);
+
+                    if(mUseGPS && mLocation != null) {
+                        flickrFetcher.searchPhotos(itemList, params[0],
+                                String.valueOf(mLocation.getLatitude()),
+                                String.valueOf(mLocation.getLongitude())
+                            );
+                    } else {
+                        flickrFetcher.searchPhotos(itemList, params[0]);
+                    }
+
                 } else {
                     flickrFetcher.getRecentPhotos(itemList);
                 }

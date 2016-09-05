@@ -18,4 +18,7 @@
     <string name="open_with_external_browser">Open with external browser</string>
     <string name="open_in_app_browser">Open in-app browser</string>
     <string name="in_app_browser">In-app Browser</string>
+    <string name="photo_setting">Setting</string>
+
+    <string name="use_gps_setting">Use GPS when searching</string>
 </resources>

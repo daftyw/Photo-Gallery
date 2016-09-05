@@ -26,4 +26,9 @@
     <item android:id="@+id/mnu_manual_check"
           android:title="@string/manual_check"
           app:showAsAction="never" />
+
+    <item android:id="@+id/mnu_setting"
+          android:title="@string/photo_setting"
+          app:showAsAction="never" />
+
 </menu>

@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="ayp.aug.photogallery.RECEIVE_SHOW_NOTIFICATION"/>
 
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -63,6 +66,12 @@
             android:parentActivityName=".PhotoGalleryActivity"
             android:configChanges="keyboardHidden|orientation|screenSize" />
 
+        <!-- Setting -->
+        <activity
+            android:name=".SettingActivity"
+            android:label="@string/photo_setting"
+            android:parentActivityName=".PhotoGalleryActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
     </application>
 
 </manifest>

@@ -1,5 +1,6 @@
 package ayp.aug.photogallery;
 
+import android.location.Location;
 import android.net.Uri;
 import android.util.Log;
 
@@ -78,6 +79,12 @@ public class FlickrFetcher {
             builder.appendQueryParameter("text", param[0]);
         }
 
+        if(param.length > 1) {
+            // Lat & lon
+            builder.appendQueryParameter("lat", param[1]);
+            builder.appendQueryParameter("lon", param[2]);
+        }
+
         Uri completeUrl = builder.build();
         String url = completeUrl.toString();
 
@@ -103,11 +110,24 @@ public class FlickrFetcher {
     public void searchPhotos(List<GalleryItem> items, String key) {
         try {
             String url = buildUrl(METHOD_SEARCH, key);
-            String jsonStr = queryItem(url);
-            if(jsonStr != null) {
-                parseJSON(items, jsonStr);
-            }
+            fetchPhoto(items, url);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(TAG, "Failed to fetch items", e);
+        }
+    }
 
+    /**
+     *
+     * @param items
+     * @param key
+     * @param location
+     */
+    public void searchPhotos(List<GalleryItem> items, String key, String lat, String lon) {
+        try {
+            String url = buildUrl(METHOD_SEARCH, key, lat, lon);
+
+            fetchPhoto(items, url);
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "Failed to fetch items", e);
@@ -117,14 +137,17 @@ public class FlickrFetcher {
     public void getRecentPhotos(List<GalleryItem> items) {
         try {
             String url = buildUrl(METHOD_GET_RECENT);
-            String jsonStr = queryItem(url);
-            if(jsonStr != null) {
-                parseJSON(items, jsonStr);
-            }
-
+            fetchPhoto(items, url);
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "Failed to fetch items", e);
+        }
+    }
+
+    public void fetchPhoto(List<GalleryItem> items, String url) throws IOException, JSONException {
+        String jsonStr = queryItem(url);
+        if(jsonStr != null) {
+            parseJSON(items, jsonStr);
         }
     }
 
