@@ -22,5 +22,5 @@
 
     <string name="use_gps_setting">Use GPS when searching</string>
     <string name="photo_map">Map for Photo</string>
-    <string name="open_in_map">Open in Map</string>
+    <string name="open_in_map">Open in map</string>
 </resources>

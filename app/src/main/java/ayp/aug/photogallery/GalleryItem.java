@@ -101,4 +101,8 @@ public class GalleryItem {
                 .appendPath(mId)
                 .build(); // Return Uri
     }
+
+    public boolean isGeoCorrect() {
+        return !("0".equals(mLat) && "0".equals(mLon));
+    }
 }
